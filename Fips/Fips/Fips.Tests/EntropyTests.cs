@@ -1,6 +1,6 @@
 using System;
+using System.Collections.Generic;
 using System.Linq;
-using System.Security.Cryptography;
 using NUnit.Framework;
 
 namespace Fips.Tests
@@ -57,9 +57,9 @@ namespace Fips.Tests
 				rnd.NextBytes(values[i]);
 			}
 
-			Console.WriteLine($"Monobit: Passed {MathAdvanced.FrequencyTest(values).Count(pVal => pVal.Value >= 0.01)} bits out of total {byteLength * 8}");
-			Console.WriteLine($"Poker:   Passed {MathAdvanced.BlockTest(values).Count(pVal => pVal.Value >= 0.01)} bits out of total {byteLength * 8}");
-			Console.WriteLine($"Runs:    Passed {MathAdvanced.RunsTest(values).Count(pVal => pVal.Value >= 0.01)} bits out of total {byteLength * 8}");
+			Console.WriteLine($"Monobit: Passed {MathAdvanced.FrequencyTest(values).Count(pVal => pVal.Value >= 0.01)} bits out of total {byteLength*8}");
+			Console.WriteLine($"Poker:   Passed {MathAdvanced.BlockTest(values).Count(pVal => pVal.Value >= 0.01)} bits out of total {byteLength*8}");
+			Console.WriteLine($"Runs:    Passed {MathAdvanced.RunsTest(values).Count(pVal => pVal.Value >= 0.01)} bits out of total {byteLength*8}");
 		}
 
 		[Test]
@@ -68,8 +68,8 @@ namespace Fips.Tests
 			var values = GenerateBaseValues();
 
 			Console.WriteLine($"Monobit: Passed {MathAdvanced.FrequencyTest(values).Count(pVal => pVal.Value >= 0.01)} bits out of total {byteLength*8}");
-			Console.WriteLine($"Block:   Passed {MathAdvanced.BlockTest(values).Count(pVal => pVal.Value >= 0.01)} bits out of total {byteLength * 8}");
-			Console.WriteLine($"Runs:    Passed {MathAdvanced.RunsTest(values).Count(pVal => pVal.Value >= 0.01)} bits out of total {byteLength * 8}");
+			Console.WriteLine($"Block:   Passed {MathAdvanced.BlockTest(values).Count(pVal => pVal.Value >= 0.01)} bits out of total {byteLength*8}");
+			Console.WriteLine($"Runs:    Passed {MathAdvanced.RunsTest(values).Count(pVal => pVal.Value >= 0.01)} bits out of total {byteLength*8}");
 		}
 
 		[Test]
@@ -97,9 +97,9 @@ namespace Fips.Tests
 			var blockScoreAfter = MathAdvanced.BlockTest(values).Count(pVal => pVal.Value >= 0.01);
 			var runsScoreAfter = MathAdvanced.RunsTest(values).Count(pVal => pVal.Value >= 0.01);
 
-			Console.WriteLine($"Monobit: Passed {monobitScoreAfter} bits out of total {byteLength * 8}");
-			Console.WriteLine($"Poker:   Passed {blockScoreAfter} bits out of total {byteLength * 8}");
-			Console.WriteLine($"Runs:    Passed {runsScoreAfter} bits out of total {byteLength * 8}");
+			Console.WriteLine($"Monobit: Passed {monobitScoreAfter} bits out of total {byteLength*8}");
+			Console.WriteLine($"Poker:   Passed {blockScoreAfter} bits out of total {byteLength*8}");
+			Console.WriteLine($"Runs:    Passed {runsScoreAfter} bits out of total {byteLength*8}");
 
 			Assert.Less(monobitScoreAfter, monobitScore);
 			Assert.Less(blockScoreAfter, blockScore);
@@ -115,7 +115,7 @@ namespace Fips.Tests
 			var blockScore = MathAdvanced.BlockTest(values).Count(pVal => pVal.Value >= 0.01);
 			var runsScore = MathAdvanced.RunsTest(values).Count(pVal => pVal.Value >= 0.01);
 
-			var random = new Random();
+			var random = new Random(globalSeed);
 			int c = 0;
 			int count = 0;
 			for (int i = 0; i < 500; c++)
@@ -134,9 +134,50 @@ namespace Fips.Tests
 			var blockScoreAfter = MathAdvanced.BlockTest(values).Count(pVal => pVal.Value >= 0.01);
 			var runsScoreAfter = MathAdvanced.RunsTest(values).Count(pVal => pVal.Value >= 0.01);
 
-			Console.WriteLine($"Monobit: Passed {monobitScoreAfter} bits out of total {byteLength * 8}");
-			Console.WriteLine($"Poker:   Passed {blockScoreAfter} bits out of total {byteLength * 8}");
-			Console.WriteLine($"Runs:    Passed {runsScoreAfter} bits out of total {byteLength * 8}");
+			Console.WriteLine($"Monobit: Passed {monobitScoreAfter} bits out of total {byteLength*8}");
+			Console.WriteLine($"Poker:   Passed {blockScoreAfter} bits out of total {byteLength*8}");
+			Console.WriteLine($"Runs:    Passed {runsScoreAfter} bits out of total {byteLength*8}");
+
+			Assert.Less(monobitScoreAfter, monobitScore);
+			Assert.Less(blockScoreAfter, blockScore);
+			Assert.Less(runsScoreAfter, runsScore);
+		}
+
+		[Test]
+		public void Advanced_embedded_full_sequence_in_random_order_detection_test()
+		{
+			var values = GenerateBaseValues();
+
+			var monobitScore = MathAdvanced.FrequencyTest(values).Count(pVal => pVal.Value >= 0.01);
+			var blockScore = MathAdvanced.BlockTest(values).Count(pVal => pVal.Value >= 0.01);
+			var runsScore = MathAdvanced.RunsTest(values).Count(pVal => pVal.Value >= 0.01);
+
+			List<int> numbers = new List<int>();
+			for (int i = 0; i < 200; i++)
+			{
+				numbers.Add(i);
+			}
+			numbers.Shuffle(new Random(globalSeed));
+
+			int c = 0;
+			int count = 0;
+			for (int i = 0; i < numbers.Count; i++, c++)
+			{
+				values[c] = new byte[byteLength];
+				Array.Copy(BitConverter.GetBytes(numbers[i]), values[c], 4);
+				i++;
+				count++;
+			}
+
+			Console.WriteLine($"Inserted {count} values spread over {c} positions, but in random order");
+
+			var monobitScoreAfter = MathAdvanced.FrequencyTest(values).Count(pVal => pVal.Value >= 0.01);
+			var blockScoreAfter = MathAdvanced.BlockTest(values).Count(pVal => pVal.Value >= 0.01);
+			var runsScoreAfter = MathAdvanced.RunsTest(values).Count(pVal => pVal.Value >= 0.01);
+
+			Console.WriteLine($"Monobit: Passed {monobitScoreAfter} bits out of total {byteLength*8}");
+			Console.WriteLine($"Poker:   Passed {blockScoreAfter} bits out of total {byteLength*8}");
+			Console.WriteLine($"Runs:    Passed {runsScoreAfter} bits out of total {byteLength*8}");
 
 			Assert.Less(monobitScoreAfter, monobitScore);
 			Assert.Less(blockScoreAfter, blockScore);
@@ -154,9 +195,9 @@ namespace Fips.Tests
 
 			var values = GenerateBaseValues();
 
-			Console.WriteLine($"Monobit: Passed {MathAdvanced.FrequencyTest(values).Count(pVal => pVal.Value >= 0.01)} bits out of total {byteLength * 8}");
-			Console.WriteLine($"Poker:   Passed {MathAdvanced.BlockTest(values).Count(pVal => pVal.Value >= 0.01)} bits out of total {byteLength * 8}");
-			Console.WriteLine($"Runs:    Passed {MathAdvanced.RunsTest(values).Count(pVal => pVal.Value >= 0.01)} bits out of total {byteLength * 8}");
+			Console.WriteLine($"Monobit: Passed {MathAdvanced.FrequencyTest(values).Count(pVal => pVal.Value >= 0.01)} bits out of total {byteLength*8}");
+			Console.WriteLine($"Poker:   Passed {MathAdvanced.BlockTest(values).Count(pVal => pVal.Value >= 0.01)} bits out of total {byteLength*8}");
+			Console.WriteLine($"Runs:    Passed {MathAdvanced.RunsTest(values).Count(pVal => pVal.Value >= 0.01)} bits out of total {byteLength*8}");
 
 			var random = new Random(globalSeed);
 			byte[][] humanOrderedValues = new byte[(int) (values.Length*0.01)][];
@@ -171,9 +212,9 @@ namespace Fips.Tests
 				i++;
 			}
 
-			Console.WriteLine($"Monobit: Passed {MathAdvanced.FrequencyTest(humanOrderedValues).Count(pVal => pVal.Value >= 0.01)} bits out of total {byteLength * 8}");
-			Console.WriteLine($"Poker:   Passed {MathAdvanced.BlockTest(humanOrderedValues).Count(pVal => pVal.Value >= 0.01)} bits out of total {byteLength * 8}");
-			Console.WriteLine($"Runs:    Passed {MathAdvanced.RunsTest(humanOrderedValues).Count(pVal => pVal.Value >= 0.01)} bits out of total {byteLength * 8}");
+			Console.WriteLine($"Monobit: Passed {MathAdvanced.FrequencyTest(humanOrderedValues).Count(pVal => pVal.Value >= 0.01)} bits out of total {byteLength*8}");
+			Console.WriteLine($"Poker:   Passed {MathAdvanced.BlockTest(humanOrderedValues).Count(pVal => pVal.Value >= 0.01)} bits out of total {byteLength*8}");
+			Console.WriteLine($"Runs:    Passed {MathAdvanced.RunsTest(humanOrderedValues).Count(pVal => pVal.Value >= 0.01)} bits out of total {byteLength*8}");
 		}
 	}
 }
